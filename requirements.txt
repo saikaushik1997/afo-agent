@@ -1,0 +1,9 @@
+anthropic
+langgraph
+langchain-anthropic
+pdfplumber
+psycopg2-binary
+pydantic
+python-dotenv
+sqlalchemy
+langsmith
