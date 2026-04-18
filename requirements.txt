@@ -1,4 +1,4 @@
-anthropic
+openai
 langgraph
 langchain-anthropic
 pdfplumber
@@ -7,3 +7,8 @@ pydantic
 python-dotenv
 sqlalchemy
 langsmith
+fastapi
+uvicorn[standard]
+python-multipart
+streamlit
+requests
