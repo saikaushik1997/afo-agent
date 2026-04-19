@@ -7,6 +7,8 @@ import pdfplumber
 from .models import ClassificationResult
 
 client = OpenAI()
+import logging
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_PROMPT = """You are a specialist in analyzing financial documents for a Fund of Funds.
@@ -46,6 +48,7 @@ def _extract_text(content: bytes, filename: str) -> str:
 
 # Core specialist tool logic - the classifier LLM inference call
 def classify(content: bytes, filename: str) -> ClassificationResult:
+    logger.info(f"Classifying {filename}")
     text = _extract_text(content, filename)
 
     response = client.chat.completions.create(
@@ -59,5 +62,6 @@ def classify(content: bytes, filename: str) -> ClassificationResult:
     )
 
     tool_call = response.choices[0].message.tool_calls[0]
-    return ClassificationResult(**json.loads(tool_call.function.arguments))
-
+    result = ClassificationResult(**json.loads(tool_call.function.arguments))
+    logger.info(f"Classification result for {filename}: {result}")
+    return result

@@ -6,6 +6,9 @@ from .classifier import classify
 from .database import SessionLocal
 from .models import ClassificationResult, Document
 
+import logging
+logger = logging.getLogger(__name__)
+
 # In memory state that gets passed around between nodes
 class AgentState(TypedDict):
     doc_id: str
@@ -17,6 +20,7 @@ class AgentState(TypedDict):
 # Acknowledge node - entry point for workflow
 # Updates the status of the doc in db to processing
 def acknowledge(state: AgentState) -> AgentState:
+    logger.info(f"Acknowledging document {state['doc_id']}")
     db = SessionLocal()
     try:
         db.query(Document).filter(Document.id == state["doc_id"]).update({"status": "processing"})
@@ -30,8 +34,10 @@ def acknowledge(state: AgentState) -> AgentState:
 # successful -> result is modified
 # failed -> error is modified
 def analyze(state: AgentState) -> AgentState:
+    logger.info(f"Analyzing document {state['doc_id']}")
     try:
         result = classify(state["content"], state["filename"])
+        logger.info(f"Classification successful for {state['doc_id']}: {result.doc_type}")
         return AgentState(
             doc_id=state["doc_id"],
             content=state["content"],
@@ -40,6 +46,7 @@ def analyze(state: AgentState) -> AgentState:
             error=None
         )
     except Exception as e:
+        logger.error(f"Classification failed for {state['doc_id']}: {e}", exc_info=True)
         return AgentState(
             doc_id=state["doc_id"],
             content=state["content"],
@@ -50,6 +57,7 @@ def analyze(state: AgentState) -> AgentState:
 
 # Update the db object as processing completed
 def complete(state: AgentState) -> AgentState:
+    logger.info(f"Completing document {state['doc_id']}")
     db = SessionLocal()
     try:
         result = state["result"]
@@ -69,6 +77,7 @@ def complete(state: AgentState) -> AgentState:
 # Escalate to human review queue
 # TODO - Need a PATCH endpoint for human to manually add the missing params
 def pending_review(state: AgentState) -> AgentState:
+    logger.info(f"Document {state['doc_id']} flagged for pending review")
     db = SessionLocal()
     try:
         db.query(Document).filter(Document.id == state["doc_id"]).update({"status": "pending_review"})
@@ -80,6 +89,7 @@ def pending_review(state: AgentState) -> AgentState:
 # Unexpected technical error - just sits in mailbox for now, cant be processed further
 # TODO - mark the email as undread for retries
 def fail(state: AgentState) -> AgentState:
+    logger.error(f"Document {state['doc_id']} failed: {state['error']}")
     db = SessionLocal()
     try:
         db.query(Document).filter(Document.id == state["doc_id"]).update({

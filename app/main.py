@@ -10,6 +10,9 @@ from .agent import run_workflow
 from .database import get_db, init_db
 from .models import Document, DocumentOut
 from .poller import start_poller
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager

@@ -5,6 +5,8 @@ from pathlib import Path
 from .agent import run_workflow
 from .database import SessionLocal
 from .models import Document
+import logging
+logger = logging.getLogger(__name__)
 
 MAILBOX = Path("mailbox") # TODO - replace with an actual IMAP/Email call
 POLL_INTERVAL = 10  # seconds
@@ -27,6 +29,7 @@ def _poll():
 
             already_seen = db.query(Document).filter(Document.filename == filepath.name).first()
             if already_seen: # ignore duplicates, TODO - Mark email as read/delete processed email
+                logger.debug(f"Skipping already seen file: {filepath.name}")
                 continue
 
             content = filepath.read_bytes()
@@ -34,8 +37,12 @@ def _poll():
             db.add(doc)
             db.commit()
             db.refresh(doc)
+            logger.info(f"Created document {doc.id} for {filepath.name}")
 
             run_workflow(doc.id, content, filepath.name) # kick off the processing
-
+            logger.info(f"Workflow completed for {doc.id}")
+    
+    except Exception as e:
+        logger.error(f"Poller error: {e}", exc_info=True)
     finally:
         db.close()
