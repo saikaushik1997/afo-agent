@@ -6,6 +6,7 @@ from .classifier import classify
 from .database import SessionLocal
 from .models import ClassificationResult, Document
 
+import openai
 import logging
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ class AgentState(TypedDict):
     filename: str
     result: Optional[ClassificationResult]
     error: Optional[str]
+    retry_count: int
 
 # Acknowledge node - entry point for workflow
 # Updates the status of the doc in db to processing
@@ -34,7 +36,7 @@ def acknowledge(state: AgentState) -> AgentState:
 # successful -> result is modified
 # failed -> error is modified
 def analyze(state: AgentState) -> AgentState:
-    logger.info(f"Analyzing document {state['doc_id']}")
+    logger.info(f"Analyzing document {state['doc_id']}, attempt {state['retry_count'] + 1}")
     try:
         result = classify(state["content"], state["filename"])
         logger.info(f"Classification successful for {state['doc_id']}: {result.doc_type}")
@@ -43,16 +45,28 @@ def analyze(state: AgentState) -> AgentState:
             content=state["content"],
             filename=state["filename"],
             result=result,
-            error=None
+            error=None,
+            retry_count=state["retry_count"]
         )
-    except Exception as e:
-        logger.error(f"Classification failed for {state['doc_id']}: {e}", exc_info=True)
+    except (openai.RateLimitError, openai.APIConnectionError, openai.APITimeoutError) as e:
+        logger.warning(f"Transient error for {state['doc_id']}, retrying: {e}")
         return AgentState(
             doc_id=state["doc_id"],
             content=state["content"],
             filename=state["filename"],
             result=None,
-            error=str(e)
+            error=str(e),
+            retry_count=state["retry_count"] + 1
+        )
+    except Exception as e:
+        logger.error(f"Permanent error for {state['doc_id']}, skipping retries: {e}", exc_info=True)
+        return AgentState(
+            doc_id=state["doc_id"],
+            content=state["content"],
+            filename=state["filename"],
+            result=None,
+            error=str(e),
+            retry_count=3 # Setting retry count to 3 - since error is not transient - goes to pending review
         )
 
 # Update the db object as processing completed
@@ -80,33 +94,20 @@ def pending_review(state: AgentState) -> AgentState:
     logger.info(f"Document {state['doc_id']} flagged for pending review")
     db = SessionLocal()
     try:
-        db.query(Document).filter(Document.id == state["doc_id"]).update({"status": "pending_review"})
-        db.commit()
-    finally:
-        db.close()
-    return state
-
-# Unexpected technical error - just sits in mailbox for now, cant be processed further
-# TODO - mark the email as undread for retries
-def fail(state: AgentState) -> AgentState:
-    logger.error(f"Document {state['doc_id']} failed: {state['error']}")
-    db = SessionLocal()
-    try:
         db.query(Document).filter(Document.id == state["doc_id"]).update({
-            "status": "failed",
-            "error": state["error"],
+            "status": "pending_review",
+            "error": state.get("error")
         })
         db.commit()
     finally:
         db.close()
     return state
 
-
-# Decision edge, explicit error - fail node
+# Decision edge, explicit error - retry 3 times to handle transient failures, route to human review after
 # doc_type is None after classification - human review, make changes to file, resume after
 def _route(state: AgentState) -> str:
     if state.get("error"):
-        return "fail"
+        return "analyze" if state["retry_count"] < 3 else "pending_review"
     if state["result"].doc_type is None:
         return "pending_review"
     return "complete"
@@ -118,20 +119,18 @@ graph.add_node("acknowledge", acknowledge)
 graph.add_node("analyze", analyze)
 graph.add_node("complete", complete)
 graph.add_node("pending_review", pending_review)
-graph.add_node("fail", fail)
 
 graph.set_entry_point("acknowledge") # Entry point
 graph.add_edge("acknowledge", "analyze") # Linear, only goes to analyze, after acknowledge
 graph.add_conditional_edges("analyze", _route, {
     "complete": "complete",
     "pending_review": "pending_review",
-    "fail": "fail"
+    "analyze": "analyze"
 })
 
 # Valid END states
 graph.add_edge("complete", END)
 graph.add_edge("pending_review", END) # TODO - change to wait for interrupt - when PATCH endpoint is implemented
-graph.add_edge("fail", END)
 
 workflow = graph.compile()
 
@@ -143,5 +142,6 @@ def run_workflow(doc_id: str, content: bytes, filename: str):
         "filename": filename,
         "result": None,
         "error": None,
+        "retry_count": 0,
     })
 
