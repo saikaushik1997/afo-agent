@@ -10,6 +10,7 @@ from .agent import run_workflow
 from .database import get_db, init_db
 from .models import Document, DocumentOut
 from .poller import start_poller
+from .email_poller import start_email_poller
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +20,8 @@ logging.basicConfig(level=logging.INFO)
 async def lifespan(app: FastAPI):
     # anything before yield runs on startup, anything after runs on shutdown
     init_db()
-    threading.Thread(target=start_poller, daemon=True).start() # starting poller
+    threading.Thread(target=start_poller, daemon=True).start() # starting poller TODO - remove after email poller is implemented
+    threading.Thread(target=start_email_poller, daemon=True).start() # starting email poller 
     yield
 
 
