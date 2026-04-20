@@ -14,6 +14,7 @@ from .poller import start_poller
 from .email_poller import start_email_poller
 from fastapi.responses import FileResponse
 import os
+import mimetypes
 
 import logging
 
@@ -113,4 +114,6 @@ def get_document_file(doc_id: str, db: Session = Depends(get_db)):
     path = f"/app/mailbox/{doc.filename}"
     if not os.path.exists(path):
         raise HTTPException(404, "File not found on disk")
-    return FileResponse(path, media_type="application/pdf")
+    media_type, _ = mimetypes.guess_type(doc.filename) # looks at file extension, and gets the media type
+    return FileResponse(path, media_type=media_type or "application/octet-stream") # handle unknown media type
+

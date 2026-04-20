@@ -10,6 +10,8 @@ from .database import SessionLocal
 from .models import Examples
 from langsmith import traceable
 from prompts.classifier.v1 import SYSTEM_PROMPT, TOOL_DEFINITION
+import pytesseract
+from PIL import Image
 
 client = OpenAI()
 import logging
@@ -21,7 +23,7 @@ def _extract_text(content: bytes, filename: str) -> str:
         with pdfplumber.open(io.BytesIO(content)) as pdf:
             return "\n".join(page.extract_text() or "" for page in pdf.pages)
     else:
-        return base64.standard_b64encode(content).decode() # for ".png" or any other types, let the LLM decide how to handle it
+        return pytesseract.image_to_string(Image.open(io.BytesIO(content))) # OCR for image to text
 
 # Human review corrections go to the Examples table
 # Fetching the corrected examples - to few-shot the prompt, to avoid repetition of same/similar issues
