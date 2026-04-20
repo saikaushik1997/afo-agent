@@ -18,7 +18,7 @@ class Document(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4())) # primary key - UUID
     message_id = Column(String, nullable=True) # email's ID from the mail server
     filename = Column(String, nullable=False) # uploaded file in the email
-    status = Column(String, default="received")  # received | processing | completed | failed | pending_review
+    status = Column(String, default="received")  # received | processing | completed | failed | pending_review | discarded
     doc_type = Column(String, nullable=True)      # invoice | capital_call
     fund_name = Column(String, nullable=True)
     amount = Column(Float, nullable=True)

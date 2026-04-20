@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from .agent import run_workflow, resume_workflow
+from .agent import resume_workflow, workflow
 from .database import get_db, init_db
 from .models import Document, DocumentOut, ClassificationResult, ReviewInput, Examples
 from .poller import start_poller
@@ -35,7 +35,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 @app.get("/api/documents", response_model=List[DocumentOut])
 def list_documents(db: Session = Depends(get_db)):
-    return db.query(Document).order_by(Document.created_at.desc()).all()
+    return db.query(Document).filter(Document.status != "discarded").order_by(Document.created_at.desc()).all()
 
 
 @app.get("/api/documents/{doc_id}", response_model=DocumentOut)
@@ -83,4 +83,19 @@ def review_document(doc_id: str, body: ReviewInput, db: Session = Depends(get_db
         raise HTTPException(500, f"Failed to resume workflow: {str(e)}")
 
     db.refresh(doc)
+    return doc
+
+# Human Reviewer decides its a garbage doc that cant be classified and needs to be discarded
+@app.post("/api/documents/{doc_id}/discard", response_model=DocumentOut)
+def discard_document(doc_id: str, db: Session = Depends(get_db)):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    # Discard possible only on pending review docs
+    if doc.status != "pending_review":
+        raise HTTPException(400, f"Document is not pending review, current status: {doc.status}")
+    db.query(Document).filter(Document.id == doc_id).update({"status": "discarded"})
+    db.commit()
+    db.refresh(doc)
+    workflow.checkpointer.delete_thread(doc_id)
     return doc
