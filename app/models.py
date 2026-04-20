@@ -26,6 +26,7 @@ class Document(Base):
     due_date = Column(String, nullable=True)
     error = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    document_text = Column(Text, nullable=True)
 
 # SQL Model for Example table - human corrections that lead to few-shot examples to improve the model's classification
 class Examples(Base):
@@ -39,7 +40,7 @@ class Examples(Base):
     currency = Column(String, nullable=True)
     due_date = Column(String, nullable=True)
 
-# FastAPI Model
+# FastAPI Model for Get Document API
 class DocumentOut(BaseModel):
     id: str
     filename: str
@@ -53,6 +54,14 @@ class DocumentOut(BaseModel):
     created_at: datetime
         
     model_config = {"from_attributes": True}
+
+# FastAPI Model for Human Review - Corrections
+class ReviewInput(BaseModel):
+    doc_type: str
+    fund_name: Optional[str] = None
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    due_date: Optional[str] = None
 
 
 # Optional fields, nullable - to prevent hallucination

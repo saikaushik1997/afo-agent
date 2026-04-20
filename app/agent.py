@@ -118,6 +118,7 @@ def complete(state: AgentState) -> AgentState:
             "amount": result.amount,
             "currency": result.currency,
             "due_date": result.due_date,
+            "document_text": state.get("document_text"),
         })
         db.commit()
     finally:
@@ -125,12 +126,17 @@ def complete(state: AgentState) -> AgentState:
     return state
 
 # Escalate to human review queue
-# TODO - Need a PATCH endpoint for human to manually add the missing params
 def pending_review(state: AgentState) -> AgentState:
     logger.info(f"Document {state['doc_id']} flagged for pending review")
     db = SessionLocal()
     try:
         db.query(Document).filter(Document.id == state["doc_id"]).update({
+            "doc_type": state["result"].doc_type if state.get("result") else None,
+            "fund_name": state["result"].fund_name if state.get("result") else None,
+            "amount": state["result"].amount if state.get("result") else None,
+            "currency": state["result"].currency if state.get("result") else None,
+            "due_date": state["result"].due_date if state.get("result") else None,
+            "document_text": state.get("document_text"),
             "status": "pending_review",
             "error": state.get("error") or state.get("judge_reasoning") # error when transient failures exhaust retries, judge_reasoning for low scores by judge LLM
         })
@@ -207,6 +213,13 @@ def run_workflow(doc_id: str, content: bytes, filename: str):
 # Triggered by LangGraph interrupt, when human_review is done
 # Used saved state to resume a paused graph
 def resume_workflow(doc_id: str, corrected_result: ClassificationResult):
+    logger.info(f"Resuming workflow for {doc_id}")
     config = {"configurable": {"thread_id": doc_id}}
-    workflow.update_state(config, {"result": corrected_result}, as_node="judge") # tells LangGraph that the update came from judge node
+    workflow.update_state(config, {
+        "result": corrected_result,
+        "judge_score": 1.0,
+        "judge_reasoning": "Human reviewed and corrected"
+    }, as_node="judge")
+    logger.info(f"State updated for {doc_id}, invoking...")
     workflow.invoke(None, config)
+    logger.info(f"Workflow resumed for {doc_id}")

@@ -5,6 +5,7 @@ from typing import Optional
 from openai import OpenAI
 from pydantic import BaseModel
 from .models import JudgeResult
+from langsmith import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ TOOL_DEFINITION = {
 
 # classification dict, and initial text both passed as context for the LLM to judge
 # classification is what the classifier model returned
+@traceable
 def judge(document_text: str, classification: dict) -> JudgeResult:
     logger.info(f"Judging classification: {classification}")
 

@@ -1,4 +1,5 @@
 import threading
+import uuid
 from contextlib import asynccontextmanager
 from typing import List
 
@@ -6,13 +7,14 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from .agent import run_workflow
+from .agent import run_workflow, resume_workflow
 from .database import get_db, init_db
-from .models import Document, DocumentOut
+from .models import Document, DocumentOut, ClassificationResult, ReviewInput, Examples
 from .poller import start_poller
 from .email_poller import start_email_poller
 import logging
 
+logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
@@ -41,4 +43,42 @@ def get_document(doc_id: str, db: Session = Depends(get_db)):
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(404, "Document not found")
+    return doc
+
+@app.patch("/api/documents/{doc_id}/review", response_model=DocumentOut)
+def review_document(doc_id: str, body: ReviewInput, db: Session = Depends(get_db)):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    if doc.status != "pending_review":
+        raise HTTPException(400, f"Document is not pending review, current status: {doc.status}")
+
+    # Save to examples table for few-shot injection later
+    example = Examples(
+        id=str(uuid.uuid4()),
+        document_text=doc.document_text,
+        doc_type=body.doc_type,
+        fund_name=body.fund_name,
+        amount=body.amount,
+        currency=body.currency,
+        due_date=body.due_date,
+    )
+    db.add(example)
+    db.commit()
+
+    # Resume LangGraph workflow with corrected result - will go to complete state
+    corrected = ClassificationResult(
+        doc_type=body.doc_type,
+        fund_name=body.fund_name,
+        amount=body.amount,
+        currency=body.currency,
+        due_date=body.due_date,
+    )
+    try:
+        resume_workflow(doc_id, corrected)
+    except Exception as e:
+        logger.error(f"Resume workflow failed: {e}", exc_info=True)
+        raise HTTPException(500, f"Failed to resume workflow: {str(e)}")
+
+    db.refresh(doc)
     return doc

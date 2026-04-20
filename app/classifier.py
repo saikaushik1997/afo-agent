@@ -8,6 +8,7 @@ from .models import ClassificationResult
 
 from .database import SessionLocal
 from .models import Examples
+from langsmith import traceable
 
 client = OpenAI()
 import logging
@@ -98,12 +99,14 @@ def _get_few_shot_examples() -> list:
         db.close()
 
 # Core specialist tool logic - the classifier LLM inference call
+@traceable
 def classify(content: bytes, filename: str) -> ClassificationResult:
     logger.info(f"Classifying {filename}")
     text = _extract_text(content, filename)
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
+        temperature=0,
         tools=[TOOL_DEFINITION],
         tool_choice={"type": "function", "function": {"name": "classify_document"}},
         messages=[
