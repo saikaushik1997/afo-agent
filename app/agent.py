@@ -5,6 +5,7 @@ from langgraph.graph import END, StateGraph
 from .classifier import classify
 from .database import SessionLocal
 from .models import ClassificationResult, Document
+from .judge import judge as run_judge
 
 import openai
 import logging
@@ -18,6 +19,10 @@ class AgentState(TypedDict):
     result: Optional[ClassificationResult]
     error: Optional[str]
     retry_count: int
+    judge_score: Optional[float]
+    judge_reasoning: Optional[str]
+    document_text: Optional[str]
+
 
 # Acknowledge node - entry point for workflow
 # Updates the status of the doc in db to processing
@@ -46,7 +51,8 @@ def analyze(state: AgentState) -> AgentState:
             filename=state["filename"],
             result=result,
             error=None,
-            retry_count=state["retry_count"]
+            retry_count=state["retry_count"],
+            document_text=result.document_text,
         )
     except (openai.RateLimitError, openai.APIConnectionError, openai.APITimeoutError) as e:
         logger.warning(f"Transient error for {state['doc_id']}, retrying: {e}")
@@ -68,6 +74,25 @@ def analyze(state: AgentState) -> AgentState:
             error=str(e),
             retry_count=3 # Setting retry count to 3 - since error is not transient - goes to pending review
         )
+
+# LLM as a Judge Node - takes in raw docs and classified outputs - to judge the main LLM
+def judge(state: AgentState) -> AgentState:
+    logger.info(f"Judging document {state['doc_id']}")
+    result = run_judge(
+        document_text=state["document_text"],
+        classification=state["result"].model_dump()
+    )
+    return AgentState(
+        doc_id=state["doc_id"],
+        content=state["content"],
+        filename=state["filename"],
+        result=state["result"],
+        error=state["error"],
+        retry_count=state["retry_count"],
+        document_text=state["document_text"],
+        judge_score=result.confidence,
+        judge_reasoning=result.reasoning
+    )
 
 # Update the db object as processing completed
 def complete(state: AgentState) -> AgentState:
@@ -110,6 +135,11 @@ def _route(state: AgentState) -> str:
         return "analyze" if state["retry_count"] < 3 else "pending_review"
     if state["result"].doc_type is None:
         return "pending_review"
+    if state["judge_score"] < 0.9:
+        return "pending_review"
+    if any(v is None for v in [state["result"].fund_name, state["result"].amount, state["result"].currency, state["result"].due_date]):
+        # if any of the fields are missing, route to pending review
+        return "pending_review"
     return "complete"
 
 
@@ -119,10 +149,12 @@ graph.add_node("acknowledge", acknowledge)
 graph.add_node("analyze", analyze)
 graph.add_node("complete", complete)
 graph.add_node("pending_review", pending_review)
+graph.add_node("judge", judge)
 
 graph.set_entry_point("acknowledge") # Entry point
 graph.add_edge("acknowledge", "analyze") # Linear, only goes to analyze, after acknowledge
-graph.add_conditional_edges("analyze", _route, {
+graph.add_edge("analyze", "judge") # Linear, only goes to judge, after analyze
+graph.add_conditional_edges("judge", _route, {
     "complete": "complete",
     "pending_review": "pending_review",
     "analyze": "analyze"
@@ -143,5 +175,8 @@ def run_workflow(doc_id: str, content: bytes, filename: str):
         "result": None,
         "error": None,
         "retry_count": 0,
+        "judge_score": None,
+        "judge_reasoning": None,
+        "document_text": None,
     })
 

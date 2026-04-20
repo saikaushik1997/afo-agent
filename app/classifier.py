@@ -63,5 +63,6 @@ def classify(content: bytes, filename: str) -> ClassificationResult:
 
     tool_call = response.choices[0].message.tool_calls[0]
     result = ClassificationResult(**json.loads(tool_call.function.arguments))
+    result.document_text = text
     logger.info(f"Classification result for {filename}: {result}")
     return result

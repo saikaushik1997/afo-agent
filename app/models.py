@@ -52,3 +52,9 @@ class ClassificationResult(BaseModel):
     amount: Optional[float] = None
     currency: Optional[str] = None
     due_date: Optional[str] = None
+    document_text: Optional[str] = None
+
+# Result Model for Judge LLM
+class JudgeResult(BaseModel):
+    confidence: float
+    reasoning: str
