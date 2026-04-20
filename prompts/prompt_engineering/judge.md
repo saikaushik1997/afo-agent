@@ -115,6 +115,45 @@ Alter Domus Fund VI Management LLC
 
 ---
 
+### TC-4 — Unsupported Document Type
+
+```
+DISTRIBUTION NOTICE
+Alter Domus Fund II Management LLC
+
+Notice Date: April 1, 2024
+Payment Date: April 15, 2024
+Reference: DN-2024-0012
+To: Crestview Partners LP
+From: Alter Domus Fund II Management LLC
+
+Dear Limited Partner,
+
+We are pleased to inform you that Fund II will be making a distribution to all limited partners in
+connection with the successful exit of Portfolio Company Holdings Inc. Your pro-rata share of the
+distribution is detailed below.
+
+Please ensure your banking details on file are current. Funds will be wired to the account we
+have on record by April 15, 2024.
+
+Distribution Amount: $2,400,000
+
+Wire Instructions:
+Bank: Bank of America NA
+ABA: 026009593
+Account: 3301940087
+Ref: DN-2024-0012
+
+This distribution reflects realized proceeds from the exit and does not constitute a return of capital
+contribution. Please consult your tax advisor regarding the tax treatment of this distribution.
+
+Alter Domus Fund II Management LLC
+```
+
+**Expected:** `confidence <= 0.5`, flagged for human review — classifier forced to output `invoice` or `capital_call`, but document is actually a distribution notice (unsupported type).
+
+---
+
 ## Versions
 
 ### V1
@@ -124,6 +163,7 @@ Alter Domus Fund VI Management LLC
 **TC-1:** FAIL
 **TC-2:** FAIL (non-deterministic — same document returned `confidence=0.92` on some runs, slipping through to `completed` with wrong `due_date=30-04-2024`)
 **TC-3:** UNTESTED
+**TC-4:** UNTESTED
 
 ```
 confidence=1.0
@@ -152,6 +192,7 @@ score below 0.7. The classification cannot be confirmed without human review.
 **TC-1:** PASS
 **TC-2:** FAIL (inherited — no date conflict handling yet)
 **TC-3:** UNTESTED
+**TC-4:** UNTESTED
 
 ```
 confidence=0.5
@@ -180,6 +221,7 @@ Operational deadline takes precedence over reconciliation date.
 **TC-1:** PASS (inherited from V2)
 **TC-2:** PASS
 **TC-3:** FAIL
+**TC-4:** UNTESTED
 
 ```
 confidence=0.95
@@ -208,13 +250,42 @@ to confirm correct wire amount.
 **TC-1:** PASS (inherited from V3)
 **TC-2:** PASS (inherited from V3)
 **TC-3:** PASS
+**TC-4:** FAIL
 
 ```
-confidence=0.7
-reasoning=The document is correctly classified as a capital call. However, the extracted amount
-reflects the original call of $1,000,000, while the document mentions a partial payment received
-and a balance remaining. Therefore, it requires human review to determine the correct outstanding
-balance to be wired.
+confidence=0.5
+reasoning=The document is clearly labeled as a 'DISTRIBUTION NOTICE,' not an 'invoice.' The
+classification 'invoice' is incorrect. Additionally, while the due date is correctly extracted
+as '15-04-2024' and matches the 'Payment Date' for the distribution, misclassification as an
+'invoice' renders the extraction invalid without further human review. The document type should
+be corrected to reflect a distribution notice, and human review is necessary due to potential
+misclassification that could impact financial processing.
+```
+
+---
+
+### V5
+
+**Prompt change:** Added instruction that the classifier is constrained to `invoice` or `capital_call` — if the document is actually a different type, the judge should flag it explicitly.
+
+```
+Example 4 — unsupported doc_type
+The classifier will always output doc_type as either invoice or capital_call.
+If you determine the document is actually a different type not supported by the
+system, return confidence=0.5 and flag for human review.
+```
+
+**TC-1:** PASS (inherited from V4)
+**TC-2:** PASS (inherited from V4)
+**TC-3:** PASS (inherited from V4)
+**TC-4:** PASS
+
+```
+confidence=0.5
+reasoning=The document is clearly a distribution notice related to a fund, not an invoice. The
+extracted classification of 'invoice' does not match the document's purpose, which is the
+distribution of funds following the exit of a portfolio company. This mismatch indicates a
+classification issue that requires human review to correct.
 ```
 
 ---
@@ -228,6 +299,7 @@ balance to be wired.
 **TC-1:** PASS | FAIL
 **TC-2:** PASS | FAIL
 **TC-3:** PASS | FAIL
+**TC-4:** PASS | FAIL
 
 ```
 confidence=
