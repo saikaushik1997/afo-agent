@@ -11,7 +11,7 @@ from sqlalchemy import Column, DateTime
 class Base(DeclarativeBase):
     pass
 
-# SQL Model
+# SQL Model for Document table
 class Document(Base):
     __tablename__ = "documents"
 
@@ -26,6 +26,18 @@ class Document(Base):
     due_date = Column(String, nullable=True)
     error = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+# SQL Model for Example table - human corrections that lead to few-shot examples to improve the model's classification
+class Examples(Base):
+    __tablename__ = "examples"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4())) # primary key - UUID
+    document_text = Column(String, nullable=True)
+    doc_type = Column(String, nullable=True)
+    fund_name = Column(String, nullable=True)
+    amount = Column(Float, nullable=True)
+    currency = Column(String, nullable=True)
+    due_date = Column(String, nullable=True)
 
 # FastAPI Model
 class DocumentOut(BaseModel):

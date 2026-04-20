@@ -12,3 +12,5 @@ uvicorn[standard]
 python-multipart
 streamlit
 requests
+langgraph-checkpoint-postgres
+psycopg[binary]

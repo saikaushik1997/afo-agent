@@ -6,6 +6,9 @@ from .classifier import classify
 from .database import SessionLocal
 from .models import ClassificationResult, Document
 from .judge import judge as run_judge
+from langgraph.checkpoint.postgres import PostgresSaver
+import psycopg
+import os
 
 import openai
 import logging
@@ -52,7 +55,9 @@ def analyze(state: AgentState) -> AgentState:
             result=result,
             error=None,
             retry_count=state["retry_count"],
-            document_text=result.document_text,
+            judge_score=None,
+            judge_reasoning=None,
+            document_text=result.document_text
         )
     except (openai.RateLimitError, openai.APIConnectionError, openai.APITimeoutError) as e:
         logger.warning(f"Transient error for {state['doc_id']}, retrying: {e}")
@@ -62,7 +67,10 @@ def analyze(state: AgentState) -> AgentState:
             filename=state["filename"],
             result=None,
             error=str(e),
-            retry_count=state["retry_count"] + 1
+            retry_count=state["retry_count"] + 1,
+            judge_score=None,
+            judge_reasoning=None,
+            document_text=state.get("document_text")
         )
     except Exception as e:
         logger.error(f"Permanent error for {state['doc_id']}, skipping retries: {e}", exc_info=True)
@@ -72,7 +80,10 @@ def analyze(state: AgentState) -> AgentState:
             filename=state["filename"],
             result=None,
             error=str(e),
-            retry_count=3 # Setting retry count to 3 - since error is not transient - goes to pending review
+            retry_count=3, # Setting retry count to 3 - since error is not transient - goes to pending review
+            judge_score=None,
+            judge_reasoning=None,
+            document_text=state.get("document_text")
         )
 
 # LLM as a Judge Node - takes in raw docs and classified outputs - to judge the main LLM
@@ -121,7 +132,7 @@ def pending_review(state: AgentState) -> AgentState:
     try:
         db.query(Document).filter(Document.id == state["doc_id"]).update({
             "status": "pending_review",
-            "error": state.get("error")
+            "error": state.get("error") or state.get("judge_reasoning") # error when transient failures exhaust retries, judge_reasoning for low scores by judge LLM
         })
         db.commit()
     finally:
@@ -138,7 +149,7 @@ def _route(state: AgentState) -> str:
     if state["judge_score"] < 0.9:
         return "pending_review"
     if any(v is None for v in [state["result"].fund_name, state["result"].amount, state["result"].currency, state["result"].due_date]):
-        # if any of the fields are missing, route to pending review
+        # if any of the fields are missing, route to pending review 
         return "pending_review"
     return "complete"
 
@@ -154,6 +165,7 @@ graph.add_node("judge", judge)
 graph.set_entry_point("acknowledge") # Entry point
 graph.add_edge("acknowledge", "analyze") # Linear, only goes to analyze, after acknowledge
 graph.add_edge("analyze", "judge") # Linear, only goes to judge, after analyze
+graph.add_edge("pending_review", "complete") # pending_review is a temorary
 graph.add_conditional_edges("judge", _route, {
     "complete": "complete",
     "pending_review": "pending_review",
@@ -162,12 +174,24 @@ graph.add_conditional_edges("judge", _route, {
 
 # Valid END states
 graph.add_edge("complete", END)
-graph.add_edge("pending_review", END) # TODO - change to wait for interrupt - when PATCH endpoint is implemented
 
-workflow = graph.compile()
+DB_URI = os.getenv("DATABASE_URL", "postgresql://afo:afo@localhost:5432/afo")
+
+connection = psycopg.connect(DB_URI, autocommit=True)
+checkpointer = PostgresSaver(connection)
+checkpointer.setup()
+
+# Interrupt after pending review, before complete
+# routes to complete, post successful human review
+workflow = graph.compile(
+    checkpointer=checkpointer,
+    interrupt_after=["pending_review"]
+)
 
 # Triggered once poller finds an email with valid attachment
+# Using UUID doc_id for uniquely identifying thread_id, to support LangGraph interrupt state tracking
 def run_workflow(doc_id: str, content: bytes, filename: str):
+    config = {"configurable": {"thread_id": doc_id}}
     workflow.invoke({
         "doc_id": doc_id,
         "content": content,
@@ -178,5 +202,11 @@ def run_workflow(doc_id: str, content: bytes, filename: str):
         "judge_score": None,
         "judge_reasoning": None,
         "document_text": None,
-    })
+    }, config)
 
+# Triggered by LangGraph interrupt, when human_review is done
+# Used saved state to resume a paused graph
+def resume_workflow(doc_id: str, corrected_result: ClassificationResult):
+    config = {"configurable": {"thread_id": doc_id}}
+    workflow.update_state(config, {"result": corrected_result}, as_node="judge") # tells LangGraph that the update came from judge node
+    workflow.invoke(None, config)
