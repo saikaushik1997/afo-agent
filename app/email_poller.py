@@ -66,6 +66,13 @@ def _poll(host: str, user: str, password: str):
                     continue
 
                 content = part.get_payload(decode=True)
+
+                # Uploading file to disk, so it can be previewed during human review
+                mailbox_path = f"/app/mailbox/{filename}"
+                if not os.path.exists(mailbox_path):
+                    with open(mailbox_path, "wb") as f:
+                        f.write(content)
+                
                 doc = Document(id=str(uuid.uuid4()), filename=filename, message_id=message_id)
                 db.add(doc)
                 db.commit()

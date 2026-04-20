@@ -119,6 +119,7 @@ def complete(state: AgentState) -> AgentState:
             "currency": result.currency,
             "due_date": result.due_date,
             "document_text": state.get("document_text"),
+            "error": None,
         })
         db.commit()
     finally:

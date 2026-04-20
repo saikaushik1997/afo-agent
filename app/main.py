@@ -12,6 +12,9 @@ from .database import get_db, init_db
 from .models import Document, DocumentOut, ClassificationResult, ReviewInput, Examples
 from .poller import start_poller
 from .email_poller import start_email_poller
+from fastapi.responses import FileResponse
+import os
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -99,3 +102,15 @@ def discard_document(doc_id: str, db: Session = Depends(get_db)):
     db.refresh(doc)
     workflow.checkpointer.delete_thread(doc_id)
     return doc
+
+# Endpoint for file preview for human reviewer - mounted the mailbox folder to docker
+# processed files go in mailbox
+@app.get("/api/documents/{doc_id}/file")
+def get_document_file(doc_id: str, db: Session = Depends(get_db)):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    path = f"/app/mailbox/{doc.filename}"
+    if not os.path.exists(path):
+        raise HTTPException(404, "File not found on disk")
+    return FileResponse(path, media_type="application/pdf")

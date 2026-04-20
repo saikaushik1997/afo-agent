@@ -23,18 +23,16 @@ services:
     environment:
       DATABASE_URL: postgresql://afo:afo@db:5432/afo
     volumes:
-      - ./mailbox:/app/mailbox # for the demo, add a file locally - mounted to docker
+      - ./mailbox:/app/mailbox # for the prototype, add a file locally - mounted to docker
     depends_on:
       db:
         condition: service_healthy
   ui:
-    build: .
+    build:
+      context: ./ui # Build React App
+      dockerfile: Dockerfile
     ports:
-      - "8501:8501"
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql://afo:afo@db:5432/afo
-    command: ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+      - "5173:5173"
     depends_on:
       - app
 
