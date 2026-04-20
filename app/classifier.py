@@ -9,7 +9,7 @@ from .models import ClassificationResult
 from .database import SessionLocal
 from .models import Examples
 from langsmith import traceable
-from ..prompts.classifier.v1 import SYSTEM_PROMPT, TOOL_DEFINITION
+from prompts.classifier.v1 import SYSTEM_PROMPT, TOOL_DEFINITION
 
 client = OpenAI()
 import logging

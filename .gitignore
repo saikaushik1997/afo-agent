@@ -1,6 +1,6 @@
 .env
 __pycache__/
 *.pyc
-inbox/*.pdf
+mailbox/*.pdf
 postgres_data/
 .DS_Store
