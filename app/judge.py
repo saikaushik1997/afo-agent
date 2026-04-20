@@ -6,7 +6,7 @@ from openai import OpenAI
 from pydantic import BaseModel
 from .models import JudgeResult
 from langsmith import traceable
-from prompts.judge.v3 import SYSTEM_PROMPT, TOOL_DEFINITION
+from prompts.judge.v4 import SYSTEM_PROMPT, TOOL_DEFINITION
 
 logger = logging.getLogger(__name__)
 client = OpenAI()

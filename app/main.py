@@ -54,25 +54,27 @@ def review_document(doc_id: str, body: ReviewInput, db: Session = Depends(get_db
         raise HTTPException(400, f"Document is not pending review, current status: {doc.status}")
 
     # Save to examples table for few-shot injection later
+    # If one or more fields are empty in the PATCH call, we use existing fields
     example = Examples(
         id=str(uuid.uuid4()),
         document_text=doc.document_text,
-        doc_type=body.doc_type,
-        fund_name=body.fund_name,
-        amount=body.amount,
-        currency=body.currency,
-        due_date=body.due_date,
+        doc_type=body.doc_type or doc.doc_type,
+        fund_name=body.fund_name or doc.fund_name,
+        amount=body.amount if body.amount is not None else doc.amount,
+        currency=body.currency or doc.currency,
+        due_date=body.due_date or doc.due_date,
     )
     db.add(example)
     db.commit()
 
     # Resume LangGraph workflow with corrected result - will go to complete state
+    # If one or more fields are empty in the PATCH call, we use existing fields
     corrected = ClassificationResult(
-        doc_type=body.doc_type,
-        fund_name=body.fund_name,
-        amount=body.amount,
-        currency=body.currency,
-        due_date=body.due_date,
+        doc_type=body.doc_type or doc.doc_type,
+        fund_name=body.fund_name or doc.fund_name,
+        amount=body.amount if body.amount is not None else doc.amount,
+        currency=body.currency or doc.currency,
+        due_date=body.due_date or doc.due_date,
     )
     try:
         resume_workflow(doc_id, corrected)

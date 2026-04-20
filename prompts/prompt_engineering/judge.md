@@ -75,6 +75,46 @@ Alter Domus Fund V Management LLC
 
 ---
 
+### TC-3 — Partial Payment
+
+```
+CAPITAL CALL NOTICE
+Alter Domus Fund VI Management LLC
+
+Notice Date: April 1, 2024
+Due Date: April 20, 2024
+Reference: CC-2024-0061
+To: Harborview Institutional Fund LP
+From: Alter Domus Fund VI Management LLC
+
+Dear Limited Partner,
+
+Pursuant to the Limited Partnership Agreement, this notice confirms Capital Call #4 in the
+amount of $1,000,000. As per our records, a partial remittance was received on March 20, 2024.
+Please wire the remaining portion of your commitment by the due date specified above to avoid
+default provisions.
+
+Your account reflects a credit of $400,000 applied against the original call. Please ensure the
+balance is settled no later than April 20, 2024.
+
+Capital Call Amount: $1,000,000
+
+Wire Instructions:
+Bank: Wells Fargo Bank NA
+ABA: 121000248
+Account: 8841930076
+Ref: CC-2024-0061
+
+Please reference CC-2024-0061 in your wire instructions. Contact investor.relations@alterdomus.com
+for any queries regarding your payment history.
+
+Alter Domus Fund VI Management LLC
+```
+
+**Expected:** `confidence <= 0.7`, flagged for human review — extracted amount reflects original call ($1,000,000) but body confirms a $400,000 partial payment was already received, so the outstanding balance is $600,000.
+
+---
+
 ## Versions
 
 ### V1
@@ -83,6 +123,7 @@ Alter Domus Fund V Management LLC
 
 **TC-1:** FAIL
 **TC-2:** FAIL (non-deterministic — same document returned `confidence=0.92` on some runs, slipping through to `completed` with wrong `due_date=30-04-2024`)
+**TC-3:** UNTESTED
 
 ```
 confidence=1.0
@@ -110,6 +151,7 @@ score below 0.7. The classification cannot be confirmed without human review.
 
 **TC-1:** PASS
 **TC-2:** FAIL (inherited — no date conflict handling yet)
+**TC-3:** UNTESTED
 
 ```
 confidence=0.5
@@ -137,14 +179,42 @@ Operational deadline takes precedence over reconciliation date.
 
 **TC-1:** PASS (inherited from V2)
 **TC-2:** PASS
+**TC-3:** FAIL
+
+```
+confidence=0.95
+reasoning=The document is clearly a capital call notice, as explicitly stated in the document header
+and body. All expected fields are present, and the due date is consistent with the document's
+details. This aligns unambiguously with the classification of a capital call document.
+```
+
+---
+
+### V4
+
+**Prompt change:** Added few-shot example targeting partial payments — original call amount is prominent but body references a prior partial payment received.
+
+```
+Example 3 — partial payment
+Document states original call amount prominently but body text references
+a prior partial payment received.
+Extracted amount: 1000000
+Correct response: confidence=0.7, flag for human review
+Reasoning: Document contains evidence of prior partial payment. Extracted
+amount reflects original call, not outstanding balance. Human review required
+to confirm correct wire amount.
+```
+
+**TC-1:** PASS (inherited from V3)
+**TC-2:** PASS (inherited from V3)
+**TC-3:** PASS
 
 ```
 confidence=0.7
-reasoning=The due date extracted is April 30, 2024, which is a reconciliation date and not the
-operational due date, which is March 15, 2024. Given the instructions to not use the reconciliation
-date for wire scheduling, the extracted due date conflicts with the operational requirement.
-Classification as a 'capital_call' is correct, but the date extraction requires human review
-for correction.
+reasoning=The document is correctly classified as a capital call. However, the extracted amount
+reflects the original call of $1,000,000, while the document mentions a partial payment received
+and a balance remaining. Therefore, it requires human review to determine the correct outstanding
+balance to be wired.
 ```
 
 ---
@@ -157,6 +227,7 @@ for correction.
 
 **TC-1:** PASS | FAIL
 **TC-2:** PASS | FAIL
+**TC-3:** PASS | FAIL
 
 ```
 confidence=
