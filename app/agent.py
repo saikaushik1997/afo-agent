@@ -118,8 +118,8 @@ def complete(state: AgentState) -> AgentState:
             "amount": result.amount,
             "currency": result.currency,
             "due_date": result.due_date,
-            "document_text": state.get("document_text"),
-            "error": None,
+            "document_text": state.get("document_text"),            
+            "error": state.get("judge_reasoning") if state.get("judge_reasoning") == "Human reviewed and corrected" else "Workflow succeeded",
         })
         db.commit()
     finally:
