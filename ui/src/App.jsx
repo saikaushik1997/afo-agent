@@ -20,9 +20,12 @@ export default function App() {
     return () => clearInterval(interval)
   }, [])
 
-  const total     = docs.length
-  const completed = docs.filter(d => d.status === 'completed').length
-  const pending   = docs.filter(d => d.status === 'pending_review').length
+  const total        = docs.length
+  const completed    = docs.filter(d => d.status === 'completed').length
+  const pending      = docs.filter(d => d.status === 'pending_review').length
+  const invoices     = docs.filter(d => d.doc_type === 'invoice').length
+  const capitalCalls = docs.filter(d => d.doc_type === 'capital_call').length
+
 
   function openReview(doc) {
     setExpandedId(doc.id)
@@ -67,9 +70,11 @@ export default function App() {
 
       <div style={{ padding: '2rem' }}>
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-          <MetricCard label="Total Documents" value={total}     color="#6366f1" />
+          <MetricCard label="Total Documents"  value={total}     color="#6366f1" />
           <MetricCard label="Completed"        value={completed} color="#10b981" />
           <MetricCard label="Pending Review"   value={pending}   color="#f59e0b" />
+          <MetricCard label="Invoices"         value={invoices}     color="#0ea5e9" />
+          <MetricCard label="Capital Calls"    value={capitalCalls} color="#8b5cf6" />
         </div>
 
         <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
