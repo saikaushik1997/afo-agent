@@ -39,7 +39,12 @@ def _poll():
             db.refresh(doc)
             logger.info(f"Created document {doc.id} for {filepath.name}")
 
-            run_workflow(doc.id, content, filepath.name) # kick off the processing
+            try:
+                run_workflow(doc.id, content, filepath.name)
+            except Exception as e:
+                logger.error(f"Workflow failed for {doc.id}: {e}", exc_info=True)
+                db.query(Document).filter(Document.id == doc.id).update({"status": "failed", "error": str(e)})
+                db.commit()
             logger.info(f"Workflow completed for {doc.id}")
     
     except Exception as e:

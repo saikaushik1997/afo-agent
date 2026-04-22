@@ -4,6 +4,7 @@ const STATUS_COLORS = {
   processing:     { bg: '#dbeafe', color: '#1e40af' },
   received:       { bg: '#f3f4f6', color: '#374151' },
   discarded:      { bg: '#f3f4f6', color: '#9ca3af' },
+  failed:         { bg: '#fee2e2', color: '#991b1b' },
 }
 
 export default function StatusBadge({ status }) {

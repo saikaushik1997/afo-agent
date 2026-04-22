@@ -89,6 +89,9 @@ def analyze(state: AgentState) -> AgentState:
 # LLM as a Judge Node - takes in raw docs and classified outputs - to judge the main LLM
 def judge(state: AgentState) -> AgentState:
     logger.info(f"Judging document {state['doc_id']}")
+    # No result means a corrupted pdf
+    if state.get("result") is None:
+        return state
     result = run_judge(
         document_text=state["document_text"],
         classification=state["result"].model_dump()
@@ -138,7 +141,7 @@ def pending_review(state: AgentState) -> AgentState:
             "currency": state["result"].currency if state.get("result") else None,
             "due_date": state["result"].due_date if state.get("result") else None,
             "document_text": state.get("document_text"),
-            "status": "pending_review",
+            "status": "failed" if not state.get("result") else "pending_review", # no result means unrecoverable failure, marking it as failed
             "error": state.get("error") or state.get("judge_reasoning") # error when transient failures exhaust retries, judge_reasoning for low scores by judge LLM
         })
         db.commit()

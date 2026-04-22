@@ -73,15 +73,25 @@ def _poll(host: str, user: str, password: str):
                     with open(mailbox_path, "wb") as f:
                         f.write(content)
                 
-                doc = Document(id=str(uuid.uuid4()), filename=filename, message_id=message_id)
-                db.add(doc)
-                db.commit()
-                db.refresh(doc)
+                # If db write fails - mark UNSEEN so it gets reprocessed in the next runs
+                try:
+                    doc = Document(id=str(uuid.uuid4()), filename=filename, message_id=message_id)
+                    db.add(doc)
+                    db.commit()
+                    db.refresh(doc)
+                except Exception as e:
+                    logger.error(f"DB write failed for {filename}: {e}")
+                    mail.store(m_id, "-FLAGS", "\\Seen")  # mark unread so it gets reprocessed
+                    continue
                 logger.info(f"New email attachment: {filename} ({doc.id})")
 
                 mail.store(m_id, "+FLAGS", "\\Seen") # Marks email as Seen, to prevent processing again
-                run_workflow(doc.id, content, filename)
-
+                try:
+                    run_workflow(doc.id, content, filename)
+                except Exception as e:
+                    logger.error(f"Workflow failed for {doc.id}: {e}", exc_info=True)
+                    db.query(Document).filter(Document.id == doc.id).update({"status": "failed", "error": str(e)})
+                    db.commit()
         finally:
             db.close()
     
