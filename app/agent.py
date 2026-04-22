@@ -127,6 +127,7 @@ def complete(state: AgentState) -> AgentState:
         db.commit()
     finally:
         db.close()
+    checkpointer.delete_thread(state["doc_id"])
     return state
 
 # Escalate to human review queue
