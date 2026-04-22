@@ -8,6 +8,7 @@ export default function App() {
   const [expandedId, setExpandedId] = useState(null)
   const [expandedNoteId, setExpandedNoteId] = useState(null)
   const [form, setForm] = useState({})
+  const [filter, setFilter] = useState(null)
 
   useEffect(() => {
     const fetchDocs = () =>
@@ -26,6 +27,11 @@ export default function App() {
   const invoices     = docs.filter(d => d.doc_type === 'invoice').length
   const capitalCalls = docs.filter(d => d.doc_type === 'capital_call').length
 
+  // filter docs based on tile selection, tile selection determines filter value
+  const visibleDocs = filter === null ? docs
+  : filter === 'invoice' || filter === 'capital_call'
+      ? docs.filter(d => d.doc_type === filter)
+      : docs.filter(d => d.status === filter)
 
   function openReview(doc) {
     setExpandedId(doc.id)
@@ -64,19 +70,19 @@ export default function App() {
     <div style={{ minHeight: '100vh', background: '#f9fafb', fontFamily: 'system-ui, sans-serif' }}>
 
       <div style={{ background: '#1e3a5f', color: '#fff', padding: '1rem 2rem' }}>
-        <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>AFO Agent</div>
+        <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>AFO Agent Dashboard</div>
         <div style={{ fontSize: '0.8rem', color: '#93c5fd', marginTop: '2px' }}>Automated Financial Document Processing</div>
       </div>
 
       <div style={{ padding: '2rem' }}>
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-          <MetricCard label="Total Documents"  value={total}     color="#6366f1" />
-          <MetricCard label="Completed"        value={completed} color="#10b981" />
-          <MetricCard label="Pending Review"   value={pending}   color="#f59e0b" />
-          <MetricCard label="Invoices"         value={invoices}     color="#0ea5e9" />
-          <MetricCard label="Capital Calls"    value={capitalCalls} color="#8b5cf6" />
+          <MetricCard label="Total Documents"  value={total}        color="#6366f1" onClick={() => setFilter(null)}                                                  active={filter==null} />
+          <MetricCard label="Completed"        value={completed}    color="#10b981" onClick={() => setFilter(f => f === 'completed' ? null : 'completed')}           active={filter === 'completed'}/> 
+          <MetricCard label="Pending Review"   value={pending}      color="#f59e0b" onClick={() => setFilter(f => f === 'pending_review' ? null : 'pending_review')} active={filter === 'pending_review'}/>
+          <MetricCard label="Invoices"         value={invoices}     color="#0ea5e9" onClick={() => setFilter(f => f === 'invoice' ? null : 'invoice')}               active={filter === 'invoice'}/>
+          <MetricCard label="Capital Calls"    value={capitalCalls} color="#8b5cf6" onClick={() => setFilter(f => f === 'capital_call' ? null : 'capital_call')}     active={filter === 'capital_call'}/>
         </div>
-
+        
         <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -87,7 +93,7 @@ export default function App() {
               </tr>
             </thead>
             <tbody>
-              {docs.map((doc, i) => (
+              {visibleDocs.map((doc, i) => (
                 <>
                   <tr key={doc.id} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
                     <td style={{ ...td, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.filename}</td>
