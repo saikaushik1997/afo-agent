@@ -72,6 +72,7 @@ IMAP_FOLDER=afo-demo
 LANGSMITH_API_KEY=your_key_here
 LANGSMITH_TRACING=true
 LANGSMITH_PROJECT=afo-agent
+```
 
 ### LangSmith Tracing
 LangSmith tracing is enabled by default when `LANGSMITH_TRACING=true` is set. All classifier and judge LLM calls are traced under the project specified in `LANGSMITH_PROJECT`. View traces at [smith.langchain.com](https://smith.langchain.com).
