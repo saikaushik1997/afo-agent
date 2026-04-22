@@ -12,6 +12,7 @@ from .database import get_db, init_db
 from .models import Document, DocumentOut, ClassificationResult, ReviewInput, Examples
 from .poller import start_poller
 from .email_poller import start_email_poller
+from .auditor import start_auditor
 from fastapi.responses import FileResponse
 import os
 import mimetypes
@@ -28,6 +29,7 @@ async def lifespan(app: FastAPI):
     init_db()
     threading.Thread(target=start_poller, daemon=True).start() # starting poller TODO - remove after email poller is implemented
     threading.Thread(target=start_email_poller, daemon=True).start() # starting email poller 
+    threading.Thread(target=start_auditor, daemon=True).start() # starting workflow auditor
     yield
 
 
