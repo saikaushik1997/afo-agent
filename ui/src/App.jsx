@@ -10,9 +10,14 @@ export default function App() {
   const [form, setForm] = useState({})
 
   useEffect(() => {
-    fetch('/api/documents')
-      .then(r => r.json())
-      .then(setDocs)
+    const fetchDocs = () =>
+      fetch('/api/documents')
+        .then(r => r.json())
+        .then(setDocs)
+    
+    fetchDocs() // Auto re-load once every 10 seconds
+    const interval = setInterval(fetchDocs, 10000) // time in ms
+    return () => clearInterval(interval)
   }, [])
 
   const total     = docs.length
