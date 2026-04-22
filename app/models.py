@@ -39,6 +39,7 @@ class Examples(Base):
     amount = Column(Float, nullable=True)
     currency = Column(String, nullable=True)
     due_date = Column(String, nullable=True)
+    human_reason = Column(String, nullable=True) # Reason for correction, make the LLM understand why
 
 # FastAPI Model for Get Document API
 class DocumentOut(BaseModel):
@@ -62,6 +63,7 @@ class ReviewInput(BaseModel):
     amount: Optional[float] = None
     currency: Optional[str] = None
     due_date: Optional[str] = None
+    human_reason: Optional[str] = None
 
 
 # Optional fields, nullable - to prevent hallucination

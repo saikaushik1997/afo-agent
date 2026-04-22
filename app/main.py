@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from .agent import resume_workflow, workflow
+from .agent import resume_workflow, run_workflow, workflow
 from .database import get_db, init_db
 from .models import Document, DocumentOut, ClassificationResult, ReviewInput, Examples
 from .poller import start_poller
@@ -69,6 +69,7 @@ def review_document(doc_id: str, body: ReviewInput, db: Session = Depends(get_db
         amount=body.amount if body.amount is not None else doc.amount,
         currency=body.currency or doc.currency,
         due_date=body.due_date or doc.due_date,
+        human_reason=body.human_reason or "",
     )
     db.add(example)
     db.commit()
@@ -98,8 +99,8 @@ def discard_document(doc_id: str, db: Session = Depends(get_db)):
     if not doc:
         raise HTTPException(404, "Document not found")
     # Discard possible only on pending review docs
-    if doc.status != "pending_review":
-        raise HTTPException(400, f"Document is not pending review, current status: {doc.status}")
+    if doc.status not in ("pending_review", "failed"):
+        raise HTTPException(400, f"Document is neither pending review nor failed, current status: {doc.status}")
     db.query(Document).filter(Document.id == doc_id).update({"status": "discarded"})
     db.commit()
     db.refresh(doc)
@@ -119,3 +120,25 @@ def get_document_file(doc_id: str, db: Session = Depends(get_db)):
     media_type, _ = mimetypes.guess_type(doc.filename) # looks at file extension, and gets the media type
     return FileResponse(path, media_type=media_type or "application/octet-stream") # handle unknown media type
 
+# Endpoint for retrying a failed document - starts a new workflow
+@app.post("/api/documents/{doc_id}/retry", response_model=DocumentOut)
+def retry_document(doc_id: str, db: Session = Depends(get_db)):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    if doc.status != "failed":
+        raise HTTPException(400, f"Document is not failed, current status: {doc.status}")
+    
+    path = f"/app/mailbox/{doc.filename}"
+    if not os.path.exists(path):
+        raise HTTPException(404, "File not found on disk")
+
+    db.query(Document).filter(Document.id == doc_id).update({"status": "received", "error": None})
+    db.commit()
+    db.refresh(doc)
+
+    with open(path, "rb") as f:
+        content = f.read()
+
+    threading.Thread(target=run_workflow, args=(doc_id, content, doc.filename), daemon=True).start()
+    return doc

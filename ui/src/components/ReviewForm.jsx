@@ -10,7 +10,7 @@ export default function ReviewForm({ doc, form, setForm, onSubmit, onCancel }) {
             style={{ border: '1px solid #e5e7eb', borderRadius: '4px' }}
           />
           <div style={{ flex: 1 }}>
-            {['doc_type', 'fund_name', 'amount', 'currency', 'due_date'].map(field => (
+            {['doc_type', 'fund_name', 'amount', 'currency', 'due_date', 'human_reason'].map(field => (
               <div key={field} style={{ marginBottom: '0.75rem' }}>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '4px', textTransform: 'uppercase' }}>{field}</label>
                 <input

@@ -52,7 +52,8 @@ def _get_few_shot_examples() -> list:
                             "fund_name": ex.fund_name,
                             "amount": ex.amount,
                             "currency": ex.currency,
-                            "due_date": ex.due_date
+                            "due_date": ex.due_date,
+                            "human_reason": ex.human_reason
                         })
                     }
                 }]

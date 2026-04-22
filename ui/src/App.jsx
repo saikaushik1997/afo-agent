@@ -23,6 +23,7 @@ export default function App() {
 
   const total        = docs.length
   const completed    = docs.filter(d => d.status === 'completed').length
+  const failed       = docs.filter(d => d.status === 'failed').length
   const pending      = docs.filter(d => d.status === 'pending_review').length
   const invoices     = docs.filter(d => d.doc_type === 'invoice').length
   const capitalCalls = docs.filter(d => d.doc_type === 'capital_call').length
@@ -63,6 +64,12 @@ export default function App() {
       .then(() => setDocs(docs.filter(d => d.id !== doc_id)))
   }
 
+  function retry(doc_id) {
+    fetch(`/api/documents/${doc_id}/retry`, { method: 'POST' })
+      .then(r => r.json())
+      .then(updated => setDocs(docs.map(d => d.id === doc_id ? updated : d)))
+  }
+
   const th = { padding: '10px 12px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }
   const td = { padding: '10px 12px', fontSize: '0.875rem' }
 
@@ -77,7 +84,8 @@ export default function App() {
       <div style={{ padding: '2rem' }}>
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
           <MetricCard label="Total Documents"  value={total}        color="#6366f1" onClick={() => setFilter(null)}                                                  active={filter==null} />
-          <MetricCard label="Completed"        value={completed}    color="#10b981" onClick={() => setFilter(f => f === 'completed' ? null : 'completed')}           active={filter === 'completed'}/> 
+          <MetricCard label="Completed"        value={completed}    color="#10b981" onClick={() => setFilter(f => f === 'completed' ? null : 'completed')}           active={filter === 'completed'}/>
+          <MetricCard label="Failed"           value={failed}       color="#991b1b" onClick={() => setFilter(f => f === 'failed' ? null : 'failed')}                 active={filter === 'failed'}/>
           <MetricCard label="Pending Review"   value={pending}      color="#f59e0b" onClick={() => setFilter(f => f === 'pending_review' ? null : 'pending_review')} active={filter === 'pending_review'}/>
           <MetricCard label="Invoices"         value={invoices}     color="#0ea5e9" onClick={() => setFilter(f => f === 'invoice' ? null : 'invoice')}               active={filter === 'invoice'}/>
           <MetricCard label="Capital Calls"    value={capitalCalls} color="#8b5cf6" onClick={() => setFilter(f => f === 'capital_call' ? null : 'capital_call')}     active={filter === 'capital_call'}/>
@@ -121,6 +129,13 @@ export default function App() {
                       {doc.status === 'pending_review' && (
                         <>
                           <button onClick={() => openReview(doc)} style={{ background: '#6366f1', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem' }}>Review</button>
+                          <button onClick={() => discard(doc.id)} style={{ background: '#fff', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '4px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '6px' }}>Discard</button>
+                        </>
+                      )}
+                      {doc.status === 'failed' && (
+                        <>
+                          <button onClick={() => openReview(doc)} style={{ background: '#6366f1', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem' }}>Review</button>
+                          <button onClick={() => retry(doc.id)} style={{ background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '6px' }}>Retry</button>
                           <button onClick={() => discard(doc.id)} style={{ background: '#fff', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '4px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '6px' }}>Discard</button>
                         </>
                       )}
