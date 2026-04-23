@@ -9,7 +9,9 @@ from langsmith import traceable
 from prompts.judge.v5 import SYSTEM_PROMPT, TOOL_DEFINITION
 
 logger = logging.getLogger(__name__)
-client = OpenAI()
+from langsmith.wrappers import wrap_openai
+
+client = wrap_openai(OpenAI())
 
 # classification dict, and initial text both passed as context for the LLM to judge
 # classification is what the classifier model returned

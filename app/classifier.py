@@ -12,8 +12,10 @@ from langsmith import traceable
 from prompts.classifier.v1 import SYSTEM_PROMPT, TOOL_DEFINITION
 import pytesseract
 from PIL import Image
+from langsmith.wrappers import wrap_openai
 
-client = OpenAI()
+client = wrap_openai(OpenAI())
+
 import logging
 logger = logging.getLogger(__name__)
 

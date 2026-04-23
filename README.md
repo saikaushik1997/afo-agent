@@ -4,6 +4,17 @@ AFO is an AI-powered document processing agent for Fund of Funds operations. It 
 
 Built with LangGraph, FastAPI, PostgreSQL, and React.
 
+## Cost & ROI
+
+Manual classification and extraction of a single financial document takes an experienced ops analyst **5–10 minutes**. AFO processes the same document in **5–8 seconds** at a cost of approximately **$0.006 per document** (GPT-4o-mini for classification + GPT-4o for validation).
+
+| Volume | Cost/day | Human equivalent |
+|--------|----------|-----------------|
+| 1,000 docs/day | ~$6 | ~83–167 analyst hours |
+| 10,000 docs/day | ~$60 | ~833–1,667 analyst hours |
+
+Human review is reserved for low-confidence and ambiguous documents only — typically a small fraction of total volume. The cost per document decreases further as the self-improvement loop reduces the human review rate over time.
+
 ## Architecture
 
 ![Architecture Diagram](docs/architecture.png)
