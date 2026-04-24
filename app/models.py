@@ -6,7 +6,7 @@ from sqlalchemy import Column, Float, String, Text
 from sqlalchemy.orm import DeclarativeBase
 from datetime import datetime
 from sqlalchemy import Column, DateTime
-
+from pgvector.sqlalchemy import Vector
 
 class Base(DeclarativeBase):
     pass
@@ -40,6 +40,7 @@ class Examples(Base):
     currency = Column(String, nullable=True)
     due_date = Column(String, nullable=True)
     human_reason = Column(String, nullable=True) # Reason for correction, make the LLM understand why
+    embedding = Column(Vector(1536), nullable=True) # Vector embeddings 
 
 # FastAPI Model for Get Document API
 class DocumentOut(BaseModel):

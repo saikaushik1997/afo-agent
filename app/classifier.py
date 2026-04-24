@@ -8,6 +8,10 @@ from .models import ClassificationResult
 
 from .database import SessionLocal
 from .models import Examples
+from .embeddings import embed
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import func
+
 from langsmith import traceable
 from prompts.classifier.v1 import SYSTEM_PROMPT, TOOL_DEFINITION
 import pytesseract
@@ -29,10 +33,18 @@ def _extract_text(content: bytes, filename: str) -> str:
 
 # Human review corrections go to the Examples table
 # Fetching the corrected examples - to few-shot the prompt, to avoid repetition of same/similar issues
-def _get_few_shot_examples() -> list:
+def _get_few_shot_examples(document_text: str) -> list:
     db = SessionLocal()
     try:
-        examples = db.query(Examples).all()
+        # RAG to get top_3 most similar vectors from pgvector Examples table
+        query_embedding = embed(document_text)
+        examples = (
+            db.query(Examples)
+            .filter(Examples.embedding.isnot(None))
+            .order_by(Examples.embedding.cosine_distance(query_embedding))
+            .limit(3)
+            .all()
+        )
         messages = []
         for i, ex in enumerate(examples):
             # Sample Input
@@ -89,7 +101,7 @@ def classify(content: bytes, filename: str) -> ClassificationResult:
         tool_choice={"type": "function", "function": {"name": "classify_document"}},
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            *_get_few_shot_examples(),
+            *_get_few_shot_examples(text),
             {"role": "user", "content": text}
         ]
     )

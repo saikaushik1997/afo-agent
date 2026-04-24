@@ -13,6 +13,8 @@ from .models import Document, DocumentOut, ClassificationResult, ReviewInput, Ex
 from .poller import start_poller
 from .email_poller import start_email_poller
 from .auditor import start_auditor
+from .embeddings import embed
+
 from fastapi.responses import FileResponse
 import os
 import mimetypes
@@ -71,6 +73,10 @@ def review_document(doc_id: str, body: ReviewInput, db: Session = Depends(get_db
         due_date=body.due_date or doc.due_date,
         human_reason=body.human_reason or "",
     )
+    # Embed the document text for similarity search to retrieve only relevant Examples for few-shot
+    if doc.document_text:
+        example.embedding = embed(doc.document_text)
+        
     db.add(example)
     db.commit()
 

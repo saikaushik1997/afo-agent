@@ -16,3 +16,4 @@ langgraph-checkpoint-postgres
 psycopg[binary]
 pytesseract
 Pillow
+pgvector
