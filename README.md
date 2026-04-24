@@ -1,8 +1,8 @@
 # AFO Agent — Automated Fund Operations Agent
 
-AFO is an AI-powered document processing agent for Fund of Funds operations. It monitors a shared mailbox for incoming financial documents (invoices and capital calls), classifies them using GPT-4o-mini, validates extractions using GPT-4o as a judge, and routes them through a state-aware workflow with human-in-the-loop review for low-confidence or ambiguous documents.
+AFO is an AI-powered document processing agent for Fund of Funds operations. It monitors a shared mailbox for incoming financial documents (invoices and capital calls), classifies them using GPT-4o-mini, validates extractions using GPT-4o as a judge, and routes them through a state-aware workflow with human-in-the-loop review for low-confidence or ambiguous documents. Human corrections are stored as vector embeddings and retrieved semantically to continuously improve classifier accuracy.
 
-Built with LangGraph, FastAPI, PostgreSQL, and React.
+Built with LangGraph, FastAPI, PostgreSQL, pgvector, and React.
 
 ## Cost & ROI
 

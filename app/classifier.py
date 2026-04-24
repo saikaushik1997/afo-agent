@@ -37,6 +37,7 @@ def _get_few_shot_examples(document_text: str) -> list:
     db = SessionLocal()
     try:
         # RAG to get top_3 most similar vectors from pgvector Examples table
+        # Can be replaced by Pinecone when scaling
         query_embedding = embed(document_text)
         examples = (
             db.query(Examples)
