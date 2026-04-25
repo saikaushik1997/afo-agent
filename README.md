@@ -162,6 +162,8 @@ Full test cases and version logs: [`prompts/prompt_engineering/judge.md`](prompt
 | `PATCH` | `/api/documents/{doc_id}/review` | Submit human corrections, resume workflow |
 | `POST` | `/api/documents/{doc_id}/discard` | Discard a `pending_review` or `failed` document |
 | `POST` | `/api/documents/{doc_id}/retry` | Retry a `failed` document |
+| `POST` | `/api/documents/upload` | Upload a PDF or PNG file directly to trigger the workflow |
+
 
 Full interactive docs available at `http://localhost:8000/docs` when running.
 
