@@ -18,6 +18,7 @@ from .embeddings import embed
 from fastapi.responses import FileResponse
 import os
 import mimetypes
+from fastapi import UploadFile, File
 
 import logging
 
@@ -147,4 +148,26 @@ def retry_document(doc_id: str, db: Session = Depends(get_db)):
         content = f.read()
 
     threading.Thread(target=run_workflow, args=(doc_id, content, doc.filename), daemon=True).start()
+    return doc
+
+# Endpoint for direct file upload - largely for testing
+@app.post("/api/documents/upload", response_model=DocumentOut)
+def upload_document(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    content = file.file.read()
+    filename = file.filename
+
+    existing = db.query(Document).filter(Document.filename == filename).first()
+    if existing:
+        raise HTTPException(400, f"Document with filename {filename} already exists")
+
+    path = f"/app/mailbox/{filename}"
+    with open(path, "wb") as f:
+        f.write(content)
+
+    doc = Document(id=str(uuid.uuid4()), filename=filename)
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+
+    threading.Thread(target=run_workflow, args=(doc.id, content, filename), daemon=True).start()
     return doc
